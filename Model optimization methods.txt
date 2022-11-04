@@ -1,0 +1,56 @@
+模型調參、優化方法
+
+1. 資料集切分大小, 洗牌(例：N-fold cross validation)
+2. Earlystop(提前停止) => 過擬合調整
+3. 調整網路層數 => 加深或減少層數 => 欠擬合、過擬合調整
+4. dropout(隨機關閉部分神經元) => 過擬合調整
+5. regularization(正則化, L1/L2) => 過擬合調整，增加懲罰項，對某些參數進行限制，使其不致於過大；可針對kernal(權重)、bias(偏移值)、activity(輸出)做正則化
+6. Data Augmentation(數據增強) => 過擬合調整，使可用數據量增加提高網路學習到更多資料的不變性特徵，例如圖像旋轉翻轉、縮放、亮度色溫改變、剪裁、平移
+
+
+Step1. 從training loss判斷
+	training loss => large 
+		1. model bias => 設計更複雜的模型讓模型容量提升(可解釋空間提升才能包含到Loss最低的最佳函數)
+		2. optimization => optimization gradient descent無法協助我們找到最佳loss解(解釋空間已包含最佳函數, 但設計的激活函數無法協助我們找到全域最佳解)
+		可用兩個不同層數的model做出的training error做比較來判斷是1或2
+	training loss => small
+		Step2. 加入testing loss判斷
+			testing loss => small
+				模型設計佳
+			testing loss => large
+				1. overfitting => 可增加訓練資料(收集新資料、Data augmentation)、降低模型的彈性(減少參數量，共享參數；例：減低層數)、Earlystop、Refularization、Dropout來改善
+					|-> 小心造成Model bias => 對模型的限制太大(懲罰過重、模型參數太少（太簡單）)
+				2. mismach => 測試資料和訓練資料來自不同群(即便增加data也沒有幫助)
+				
+				
+optimization => gradient 為 0, W無法更新 => 需判斷此critical point是local minima 還是 Saddle point => Hessain(H) => 1. Eigenvalue 有正有負 => Saddle point => 可以透過H的eigen vector指向來跳出saddle point => 但運算量龐大, 實作困難
+																								 2. 所有Eigenvalue > 0 => Local minima => 實作上在高維度情況下, local minima出現的情況最多只有50%
+																								 3. 所有Eigenvalue <0 => Local maxima
+Smaller batch size and momentum可以幫助逃脫critical point
+	smaller batch size: noisy 較 full batch size 大, 每一個 batch 都更新一次 Loss 並調整參數, 前一個batch的gradient為 0 時, 下一個batch的gradient可能不為 0, 就有機會跳出該critical point; 考量到GPU平行運算能力, small batch size在訓練時間上不見得會低於full batch size, 因為每個epoch需要經過多次的參數 update
+	momentum: 更新參數的方向除了考慮本次gradient的方向也加入之前所有update的方向, 所以當本次gradient為0時, 若上一次update力度夠大, 就有機會跳出該critical point
+
+大部分training loss不在更新時, gradient並不為0, 反而是在一個震盪區間(在critical point上來回震盪), 這時可以靠隨梯度自動調整學習速率(Adaptive learning rate)去改善這件事, 在梯度大時, 學習速率小, 梯度小時, 學習速度大
+learning rate scheduling: 1. learning rate decay: 讓learning rate隨時間變小 2. warm up: learning rate 先設小再調整回一般數值(hyperparameter), 初始learning rate小, 讓optimizer有時間學習error surface的資訊
+
+Adam = RMSprop(adaptive learning rate optimization) + momentum
+
+改變loss function => ex. classification 選擇MSE或cross-entropy => 選擇適當的loss function可讓optimization困難度降低(起始梯度離目標是平緩或是大) 
+
+training data batch normalization => 讓error surface梯度變得比較平均 => ex. y = b + W1X1 +W2X2 => 若X1很小X2很大, X2的改變再乘以W2會對整個Y造成大的改變, 當把X1, X2兩個features做normalization時, 所有feature對於error surface梯度的影響力會變得比較平均且平緩, 降低找到最佳解的難度(因梯度較平緩可搭配較高的學習率, 降低訓練時間)
+
+
+
+
+Auto-encoder: 將輸入data降維, 再還原為原本的data; encoder(Neural network) => 將輸入data降維(dimension reduction, 其他ML的做法有PCA, t-SNE) => 輸出維度較低的vector(embedding) => decoder(Neural network): 將vector還原為原始資料
+	de-noise auto encoder: 再輸入encoder前加入noise, 降維後輸入decoder還原回沒有noise的原始資料
+	Anomaly detection(異常偵測): Binary Classification? => No, 因為多數時間我們只能拿到正常的資料, 這種問題是one class分類問題 => 可以用training data 訓練好的auto-encoder將testing data丟進去, 如果輸出和training data輸出差很多(loss很大), 可以懷疑他們不是同一類別
+	
+	
+	
+Network Compression for edge (以分類為例):
+	Network Pruning: 可分兩個方向來修剪 => 1. depth 2. width
+	Knowledge Distillation: Teacher 學習完的分類信心指數, 作為 Student 的ground truth
+	Parameter Quantization: 使用較少的空間去儲存參數(例: 降低精度、weight clustering, 將參數分成自定義數量的群, 就可用較少的代表參數量去代表很多的參數、Binary Weights, 用+1/-1代表參數)
+	Architecture Design: 改變模型結構, 例: 將CNN 的filter (原始為input channel數 = filter channel數, filter個數自定義)拆成 depthwise convolution(filter個數=input channel數) 及 pointwise convolution(1x1的kernal, channel數=input channel數, 作用為考慮不同channel之間的關係) 兩層, 降低模型運算參數但不改變output從input的來源
+	Dynamic Computation: 在模型每層輸出都加上一個分類器, 若部署的裝置運算力不足, 則在淺層即輸出結果, 不須做到整個模型結束
