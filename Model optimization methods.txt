@@ -11,7 +11,7 @@
 Step1. 從training loss判斷
 	training loss => large 
 		1. model bias => 設計更複雜的模型讓模型容量提升(可解釋空間提升才能包含到Loss最低的最佳函數)
-		2. optimization => optimization gradient descent無法協助我們找到最佳loss解(解釋空間已包含最佳函數, 但設計的激活函數無法協助我們找到全域最佳解)
+		2. optimization => optimization gradient descent無法協助我們找到最佳loss解(解釋空間已包含最佳函數, 但設計的無法協助我們找到全域最佳解)
 		可用兩個不同層數的model做出的training error做比較來判斷是1或2
 	training loss => small
 		Step2. 加入testing loss判斷
