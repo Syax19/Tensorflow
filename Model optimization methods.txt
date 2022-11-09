@@ -18,7 +18,7 @@ Step1. 從training loss判斷
 			testing loss => small
 				模型設計佳
 			testing loss => large
-				1. overfitting => 可增加訓練資料(收集新資料、Data augmentation)、降低模型的彈性(減少參數量，共享參數；例：減低層數)、Earlystop、Refularization、Dropout來改善
+				1. overfitting => 可增加訓練資料(收集新資料、Data augmentation)、降低模型的彈性(減少參數量，共享參數；例：減低層數)、Earlystop、Regularization、Dropout來改善
 					|-> 小心造成Model bias => 對模型的限制太大(懲罰過重、模型參數太少（太簡單）)
 				2. mismach => 測試資料和訓練資料來自不同群(即便增加data也沒有幫助)
 				
